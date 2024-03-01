@@ -242,9 +242,13 @@ public class SwiftShareHandlerIosPlatform: NSObject, FlutterPlugin, FlutterStrea
 
                 // Add the user's avatar to the intent.
                 if let imagePath = media.imageFilePath {
-                    let imageUrl = URL(fileURLWithPath: imagePath)
-                    let image = INImage.init(url: imageUrl)
-                    sendMessageIntent.setImage(image, forParameterNamed: \.speakableGroupName)
+                    let imageUrl = URL(string: imagePath)
+                    if imageUrl != nil {
+                        if let data = try? Data(contentsOf: imageUrl!) {
+                             let image = INImage.init(imageData: data)
+                             sendMessageIntent.setImage(image, forParameterNamed: \.speakableGroupName)
+                        }
+                    }
                 }
 
                 // Donate the intent.

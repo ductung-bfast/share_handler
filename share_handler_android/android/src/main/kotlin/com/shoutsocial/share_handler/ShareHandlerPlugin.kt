@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.graphics.Bitmap
 
 import androidx.annotation.NonNull
 import androidx.core.app.Person
@@ -15,7 +16,14 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.*
+import java.net.URL
 import java.net.URLConnection
+import com.bumptech.glide.Glide
+import com.bumptech.glide.request.RequestOptions
+import com.bumptech.glide.request.target.CustomTarget
+import com.bumptech.glide.request.transition.Transition
+import android.graphics.drawable.Drawable
+import com.bumptech.glide.load.resource.bitmap.CenterCrop
 
 private const val kEventsChannel = "com.shoutsocial.share_handler/sharedMediaStream"
 
@@ -101,18 +109,36 @@ class ShareHandlerPlugin: FlutterPlugin, Messages.ShareHandlerApi, EventChannel.
       .setName(media.speakableGroupName)
 
     media.imageFilePath?.let {
-      val bitmap = BitmapFactory.decodeFile(it)
-      val icon = IconCompat.createWithAdaptiveBitmap(bitmap)
-      shortcutBuilder.setIcon(icon)
-      personBuilder.setIcon(icon)
+      loadImageWithGlide(it)  { bitmap: Bitmap? ->
+        if (bitmap == null) {
+          return@loadImageWithGlide
+        }
+        val icon = IconCompat.createWithAdaptiveBitmap(bitmap)
+        shortcutBuilder.setIcon(icon)
+        personBuilder.setIcon(icon)
+        val person = personBuilder.build()
+        shortcutBuilder.setPerson(person)
+        val shortcut = shortcutBuilder.build()
+        ShortcutManagerCompat.addDynamicShortcuts(applicationContext, listOf(shortcut))
+      }
     }
+  }
 
-    val person = personBuilder.build()
-    shortcutBuilder.setPerson(person)
+  fun loadImageWithGlide(imageUrl: String, callback: (Bitmap?) -> Unit) {
+    Glide.with(applicationContext)
+      .asBitmap()
+      .load(imageUrl)
+      .centerCrop()
+      .apply(RequestOptions().override(1500, 1500))
+      .into(object : CustomTarget<Bitmap>() {
+        override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
+          callback(resource)
+        }
 
-    val shortcut = shortcutBuilder.build()
-
-    ShortcutManagerCompat.addDynamicShortcuts(applicationContext, listOf(shortcut))
+        override fun onLoadCleared(placeholder: Drawable?) {
+          // This can be used to clear resources, if necessary.
+        }
+      })
   }
 
   override fun resetInitialSharedMedia() {
