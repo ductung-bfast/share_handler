@@ -233,7 +233,7 @@ public class SwiftShareHandlerIosPlatform: NSObject, FlutterPlugin, FlutterStrea
         return sharedMedia
     }
 
-    func recordSentMessage(_ media: SharedMedia?, error: AutoreleasingUnsafeMutablePointer<FlutterError?>) {
+    func recordSentMessage(_ media: SharedMedia?, error: AutoreleasingUnsafeMutablePointer<FlutterError?>) async {
         // Create an INSendMessageIntent to donate an intent for a conversation with Juan Chavez.
         if let media = media {
             if #available(iOS 14.0, *) {
@@ -243,12 +243,16 @@ public class SwiftShareHandlerIosPlatform: NSObject, FlutterPlugin, FlutterStrea
                 // Add the user's avatar to the intent.
                 if let imagePath = media.imageFilePath {
                     let imageUrl = URL(string: imagePath)
+                    do {
                     if imageUrl != nil {
-                        if let data = try? Data(contentsOf: imageUrl!) {
-                             let image = INImage.init(imageData: data)
-                             sendMessageIntent.setImage(image, forParameterNamed: \.speakableGroupName)
-                        }
+                        let (data, _) = try await URLSession.shared.data(from: imageUrl!)
+                        let image = INImage(imageData: data)
+                        sendMessageIntent.setImage(image, forParameterNamed: \.speakableGroupName)
                     }
+                    } catch {
+                            // Handle errors, e.g., URL loading error
+                            print("Error loading image: \(error)")
+                        }
                 }
 
                 // Donate the intent.

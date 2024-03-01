@@ -75,7 +75,7 @@ func ShareHandlerApiGetCodec() -> (NSObjectProtocol & FlutterMessageCodec) {
 
 protocol ShareHandlerApi: AnyObject {
     func getInitialSharedMedia(_ error: AutoreleasingUnsafeMutablePointer<FlutterError?>) -> SharedMedia?
-    func recordSentMessage(_ media: SharedMedia?, error: AutoreleasingUnsafeMutablePointer<FlutterError?>)
+    func recordSentMessage(_ media: SharedMedia?, error: AutoreleasingUnsafeMutablePointer<FlutterError?>) async
     func resetInitialSharedMedia(_ error: AutoreleasingUnsafeMutablePointer<FlutterError?>)
 }
 
@@ -107,10 +107,12 @@ func ShareHandlerApiSetup(_ binaryMessenger: FlutterBinaryMessenger, _ api: (NSO
                 media = args[0] as? SharedMedia
             }
             var error: FlutterError?
-            
-            api.recordSentMessage(media, error: &error)
-            
-            callback(wrapResult(nil, error))
+            if #available(iOS 14.0, *) {
+                Task {
+                    await api.recordSentMessage(media, error: &error)
+                    callback(wrapResult(nil, error))
+                }
+            }
         }
     }
     do {
