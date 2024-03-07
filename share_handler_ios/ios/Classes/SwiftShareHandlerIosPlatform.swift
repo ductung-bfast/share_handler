@@ -246,8 +246,11 @@ public class SwiftShareHandlerIosPlatform: NSObject, FlutterPlugin, FlutterStrea
                     do {
                     if imageUrl != nil {
                         let (data, _) = try await URLSession.shared.data(from: imageUrl!)
-                        let image = INImage(imageData: data)
-                        sendMessageIntent.setImage(image, forParameterNamed: \.speakableGroupName)
+                        let rawImage = UIImage(data: data)
+                        if let croppedImage = rawImage?.croppedToSquare() {
+                            let intentImage = INImage(imageData: croppedImage.pngData()!)
+                            sendMessageIntent.setImage(intentImage, forParameterNamed: \.speakableGroupName)
+                        }
                     }
                     } catch {
                             // Handle errors, e.g., URL loading error
@@ -292,5 +295,40 @@ extension URL {
             queryStrings[key] = value
         }
         return queryStrings
+    }
+}
+
+extension UIImage {
+    func correctlyOrientedImage() -> UIImage {
+        if self.imageOrientation == .up {
+            return self
+        }
+
+        UIGraphicsBeginImageContextWithOptions(self.size, false, self.scale)
+        self.draw(in: CGRect(origin: .zero, size: self.size))
+        let normalizedImage = UIGraphicsGetImageFromCurrentImageContext() ?? self
+        UIGraphicsEndImageContext()
+
+        return normalizedImage
+    }
+
+    func croppedToSquare() -> UIImage? {
+        let normalizedImage = self.correctlyOrientedImage()
+
+        let originalWidth = normalizedImage.size.width
+        let originalHeight = normalizedImage.size.height
+        let cropSize = min(originalWidth, originalHeight)
+
+        let cropRect = CGRect(x: (originalWidth - cropSize) / 2,
+                              y: (originalHeight - cropSize) / 2,
+                              width: cropSize,
+                              height: cropSize)
+
+        UIGraphicsBeginImageContextWithOptions(CGSize(width: cropSize, height: cropSize), false, self.scale)
+        normalizedImage.draw(at: CGPoint(x: -cropRect.origin.x, y: -cropRect.origin.y))
+        let croppedImage = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+
+        return croppedImage
     }
 }
