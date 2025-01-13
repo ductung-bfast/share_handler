@@ -24,6 +24,7 @@ import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import android.graphics.drawable.Drawable
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
+import android.util.Log
 
 private const val kEventsChannel = "com.shoutsocial.share_handler/sharedMediaStream"
 
@@ -110,16 +111,21 @@ class ShareHandlerPlugin: FlutterPlugin, Messages.ShareHandlerApi, EventChannel.
 
     media.imageFilePath?.let {
       loadImageWithGlide(it)  { bitmap: Bitmap? ->
-        if (bitmap == null) {
-          return@loadImageWithGlide
+        try {
+          if (bitmap == null) {
+            return@loadImageWithGlide
+          }
+          val icon = IconCompat.createWithAdaptiveBitmap(bitmap)
+          shortcutBuilder.setIcon(icon)
+          personBuilder.setIcon(icon)
+          val person = personBuilder.build()
+          shortcutBuilder.setPerson(person)
+          val shortcut = shortcutBuilder.build()
+          ShortcutManagerCompat.addDynamicShortcuts(applicationContext, listOf(shortcut))
+        } catch (e: Exception) {
+          // handle error: Max number of dynamic shortcuts exceeded
+          Log.i("ShareHandlerPlugin", "recordSentMessage: $e")
         }
-        val icon = IconCompat.createWithAdaptiveBitmap(bitmap)
-        shortcutBuilder.setIcon(icon)
-        personBuilder.setIcon(icon)
-        val person = personBuilder.build()
-        shortcutBuilder.setPerson(person)
-        val shortcut = shortcutBuilder.build()
-        ShortcutManagerCompat.addDynamicShortcuts(applicationContext, listOf(shortcut))
       }
     }
   }
